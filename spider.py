@@ -32,8 +32,8 @@ def citation(text, value):
     for list in citations:
         for a in list.find_all(class_ = 'issue-item__title'):
             href = a['href']
-            href = href.replace("/doi/abs/10.1111/twec.","")
-            str += (a.text + "(https://doi.org/10.1111/twec." + href + ")")
+            href = href.replace("/doi/abs/10.1111/psj.","")
+            str += (a.text + "(https://doi.org/10.1111/psj." + href + ")")
     value.append(str)
 
 def abstract(text, value):
@@ -68,13 +68,13 @@ def bs(weblist, values):
     ua = UserAgent(verify_ssl = False)
     user_agent = ua.random
 
-    response = requests.get('https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Ftwec.' + weblist, headers= {'user-agent': user_agent})
+    response = requests.get('https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Fpsj.' + weblist, headers= {'user-agent': user_agent})
     citation(response.text, value)
 
-    response = requests.get('https://onlinelibrary.wiley.com/doi/10.1111/twec.' + weblist, headers= {'user-agent': user_agent})
+    response = requests.get('https://onlinelibrary.wiley.com/doi/10.1111/psj.' + weblist, headers= {'user-agent': user_agent})
     abstract(response.text,value)
 
-    response = requests.get('https://onlinelibrary.wiley.com/action/ajaxShowPubInfo?widgetId=5cf4c79f-0ae9-4dc5-96ce-77f62de7ada9&ajax=true&doi=10.1111/twec.' + weblist, headers= {'user-agent': user_agent})
+    response = requests.get('https://onlinelibrary.wiley.com/action/ajaxShowPubInfo?widgetId=5cf4c79f-0ae9-4dc5-96ce-77f62de7ada9&ajax=true&doi=10.1111/psj.' + weblist, headers= {'user-agent': user_agent})
     keyword(response.text, value)
 
     values.append(value)
@@ -99,8 +99,8 @@ def start(page):
         print(page_)
         spider(page_)
 
-def spider():
-    links = ['/toc/14679701/2019/42/4', '/toc/14679701/2019/42/3', '/toc/14679701/2019/42/2', '/toc/14679701/2019/42/1' ]
+def spider1():
+    links = ['/toc/15410072/2021/49/3']
     for link in links:
         print(link)
         values = []
@@ -108,9 +108,7 @@ def spider():
         user_agent = ua.random
         response = requests.get('https://onlinelibrary.wiley.com' + link, headers= {'user-agent': user_agent})
         time.sleep(5)
-    #https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Ftwec.13199
-    #https://onlinelibrary.wiley.com/doi/10.1111/twec.13199
-    #/doi/10.1111/twec.13168
+   
         weblist = []
         soup  = BeautifulSoup(response.text, 'lxml')
         for list in soup.find_all(class_ = "issue-item__title visitable"):
@@ -124,9 +122,28 @@ def spider():
         
         write_excel_xls_append("journal.xls",values)
 
-spider()
-"""
-start('https://onlinelibrary.wiley.com/loi/14679701/year/2018')
-time.sleep(5)
-start('https://onlinelibrary.wiley.com/loi/14679701/year/2017')
-"""
+
+def spider(link):
+    values = []
+    ua = UserAgent(verify_ssl = False)
+    user_agent = ua.random
+    response = requests.get('https://onlinelibrary.wiley.com' + link, headers= {'user-agent': user_agent})
+    time.sleep(5)
+    #https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Ftwec.13199
+    #https://onlinelibrary.wiley.com/doi/10.1111/twec.13199
+    #/doi/10.1111/twec.13168
+    weblist = []
+    soup  = BeautifulSoup(response.text, 'lxml')
+    for list in soup.find_all(class_ = "issue-item__title visitable"):
+        if(list.text != "\nIssue Information" and list.text != "\nCover Image" and list.text[0: 10] != "\nEditorial"):
+            str = list['href']
+            str = str.replace('/doi/10.1111/psj.','')
+            weblist.append(str)
+
+    for list in weblist:
+        bs(list, values)
+        
+    write_excel_xls_append("journal.xls",values)
+
+
+start('https://onlinelibrary.wiley.com/loi/15410072/year/2021')
