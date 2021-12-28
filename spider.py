@@ -22,128 +22,74 @@ def write_excel_xls_append(path, value):
     new_workbook.save(path)  # 保存工作簿
     print("xls格式表格【追加】写入数据成功！")
 
-def citation(text, value):
-    str = ""
-    soup = BeautifulSoup(text, "lxml")
-    citations = soup.find_all(class_ = 'card')
-    if len(citations) == 0:
-        value.append("")
-        return
-    for list in citations:
-        for a in list.find_all(class_ = 'issue-item__title'):
-            href = a['href']
-            href = href.replace("/doi/abs/10.1111/psj.","")
-            str += (a.text + "(https://doi.org/10.1111/psj." + href + ")")
-    value.append(str)
+def citation(link, soup, value):
+    try:
+        author = ""
+        title = soup.find(class_ = "publicationContentTitle").text
+        authors = soup.find(class_ = "authors")
+        for i in authors.find_all(class_ = "contribDegrees"):
+            author += i.find("a").text + ","
+        cite = author + title + ".Politics. " + "https://journals.sagepub.com" + link
+        cite = cite.replace("\n", "")
+    except:
+        cite = ""
+    finally:
+        value.append(cite)
 
-def abstract(text, value):
-    str = ""
-    soup = BeautifulSoup(text, "lxml")
-    Abstracts = soup.find(class_ ='article-section__content en main')
-    if Abstracts == None:
-        value.append("")
-        return
-    str = Abstracts.text
-    value.append(str)
+def abstract(soup, value):
+    try:
+        str = soup.find(class_ = "abstractSection abstractInFull").text
+    except:
+        str = ""
+    finally:
+        value.append(str)
     
-def keyword(text, value):
-    str = ""
-    soup = BeautifulSoup(text, "lxml")
-    Keywords = soup.find_all(class_ = 'rlist rlist--inline')
-    if len(Keywords) == 0:
-        value.append("")
-        return
-   
-    for li in Keywords:
-        str += li.text
-    value.append(str)
+def keyword(soup, value):
+    try:
+        str = soup.find(class_ = "abstractKeywords").text
+        str = str.replace("Keywords ", "")
+    except:
+        str = ""
+    finally:
+        value.append(str)
 
 def bs(weblist, values):
-    #https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Ftwec.13199
-    #https://onlinelibrary.wiley.com/doi/10.1111/twec.13199
-    #https://onlinelibrary.wiley.com/action/ajaxShowPubInfo?widgetId=5cf4c79f-0ae9-4dc5-96ce-77f62de7ada9&ajax=true&doi=10.1111/twec.13199
-
+    #https://journals.sagepub.com/doi/full/10.1177/02633957211035096
+    
     value = []
     print(weblist)
+
     ua = UserAgent(verify_ssl = False)
     user_agent = ua.random
+    response = requests.get('https://journals.sagepub.com' + weblist, headers= {'user-agent': user_agent})
+    soup = BeautifulSoup(response.text, "lxml")
 
-    response = requests.get('https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Fpsj.' + weblist, headers= {'user-agent': user_agent})
-    citation(response.text, value)
-
-    response = requests.get('https://onlinelibrary.wiley.com/doi/10.1111/psj.' + weblist, headers= {'user-agent': user_agent})
-    abstract(response.text,value)
-
-    response = requests.get('https://onlinelibrary.wiley.com/action/ajaxShowPubInfo?widgetId=5cf4c79f-0ae9-4dc5-96ce-77f62de7ada9&ajax=true&doi=10.1111/psj.' + weblist, headers= {'user-agent': user_agent})
-    keyword(response.text, value)
+    citation(weblist, soup, value)
+    abstract(soup, value)
+    keyword(soup, value)
 
     values.append(value)
     time.sleep(5)
 
-    
 
-def start(page):
-    #page = 'https://onlinelibrary.wiley.com/loi/14679701/year/2021'
-    list_ = []
-    ua = UserAgent(verify_ssl = False)
-    user_agent = ua.random
-    response = requests.get(page, headers= {'user-agent': user_agent})
-    time.sleep(5)
-
-    soup = BeautifulSoup(response.text, 'lxml')
-    for li in soup.find_all(class_ = "parent-item"):
-        for a  in li.find_all(name = "a"):
-            list_.append(a["href"])
-    
-    for page_ in list_:
-        print(page_)
-        spider(page_)
-
-def spider1():
-    links = ['/toc/15410072/2021/49/3']
+def spider():
+    links = ['/toc/pola/41/4', '/toc/pola/41/3', '/toc/pola/41/2', '/toc/pola/41/1']
     for link in links:
         print(link)
         values = []
+
         ua = UserAgent(verify_ssl = False)
         user_agent = ua.random
-        response = requests.get('https://onlinelibrary.wiley.com' + link, headers= {'user-agent': user_agent})
+        response = requests.get('https://journals.sagepub.com' + link, headers= {'user-agent': user_agent})
         time.sleep(5)
-   
-        weblist = []
-        soup  = BeautifulSoup(response.text, 'lxml')
-        for list in soup.find_all(class_ = "issue-item__title visitable"):
-            if(list.text != "\nIssue Information" and list.text != "\nCover Image"):
-                str = list['href']
-                str = str.replace('/doi/10.1111/twec.','')
-                weblist.append(str)
 
-        for list in weblist:
-            bs(list, values)
+        soup  = BeautifulSoup(response.text, 'lxml')
+        for list in soup.find_all("a", attrs={"data-item-name": "click-article-title"}):
+            ahref = list['href']
+            bs(ahref, values)
         
         write_excel_xls_append("journal.xls",values)
 
-
-def spider(link):
-    values = []
-    ua = UserAgent(verify_ssl = False)
-    user_agent = ua.random
-    response = requests.get('https://onlinelibrary.wiley.com' + link, headers= {'user-agent': user_agent})
-    time.sleep(5)
-    #https://onlinelibrary.wiley.com/action/showCitFormats?doi=10.1111%2Ftwec.13199
-    #https://onlinelibrary.wiley.com/doi/10.1111/twec.13199
-    #/doi/10.1111/twec.13168
-    weblist = []
-    soup  = BeautifulSoup(response.text, 'lxml')
-    for list in soup.find_all(class_ = "issue-item__title visitable"):
-        if(list.text != "\nIssue Information" and list.text != "\nCover Image" and list.text[0: 10] != "\nEditorial"):
-            str = list['href']
-            str = str.replace('/doi/10.1111/psj.','')
-            weblist.append(str)
-
-    for list in weblist:
-        bs(list, values)
-        
-    write_excel_xls_append("journal.xls",values)
+spider()
 
 
-start('https://onlinelibrary.wiley.com/loi/15410072/year/2021')
