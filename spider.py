@@ -1,11 +1,17 @@
 from os import name
+import base64
 import requests
 import time
 from fake_useragent import UserAgent
-from bs4 import BeautifulSoup
+from bs4 import BeautifulSoup, element
+from selenium.webdriver.chrome import options
 import xlrd
 import xlwt
 from xlutils.copy import copy
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
+
+ch_options = Options()
 
 
 def write_excel_xls_append(path, value):
@@ -53,17 +59,34 @@ def keyword(soup, value):
     finally:
         value.append(str)
 
+
+
 def bs(weblist, values):
-    #https://journals.sagepub.com/doi/full/10.1177/02633957211035096
-    
+    #https://academic.oup.com/ser/article-abstract/19/1/7/5299221?redirectedFrom=fulltext
+    #https://academic.oup.com/ser/article/19/1/7/5299221
+    #/ser/article/19/1/1/6307095
     value = []
     print(weblist)
 
     ua = UserAgent(verify_ssl = False)
     user_agent = ua.random
-    response = requests.get('https://journals.sagepub.com' + weblist, headers= {'user-agent': user_agent})
-    soup = BeautifulSoup(response.text, "lxml")
+    ch_options.add_argument(user_agent)
+    driver = webdriver.Chrome('/Users/mumu/Documents/GitHub/PySpider/chromedriver', options = ch_options)
+    driver.get('https://academic.oup.com' + weblist)
+    img64 = driver.find_element_by_xpath('/html/body/div/div/img').get_attribute('src')
+    img64 = img64.replace('data:image/jpg;base64,', '')
+    img64 = base64.b64decode(img64)
+    with open("img.png", "wb") as img:
+        img.write(img64)
 
+
+    capinput = driver.find_element_by_id('txtCaptchaInputId')
+    capinput.send_keys(str)
+    btnSubmit = driver.find_element_by_id('btnSubmit')
+    btnSubmit.click()
+    soup = BeautifulSoup(driver.page_source, "lxml")
+
+    print(soup.text)
     citation(weblist, soup, value)
     abstract(soup, value)
     keyword(soup, value)
@@ -73,23 +96,26 @@ def bs(weblist, values):
 
 
 def spider():
-    links = ['/toc/pola/41/4', '/toc/pola/41/3', '/toc/pola/41/2', '/toc/pola/41/1']
+    #https://academic.oup.com/ser/issue/19/1
+    links = ['/issue/19/1', '/issue/19/2', '/issue/19/3', '/issue/19/4']
+    
+
     for link in links:
         print(link)
         values = []
 
         ua = UserAgent(verify_ssl = False)
         user_agent = ua.random
-        response = requests.get('https://journals.sagepub.com' + link, headers= {'user-agent': user_agent})
+        ch_options.add_argument(user_agent)
+        driver = webdriver.Chrome('/Users/mumu/Documents/GitHub/PySpider/chromedriver', options = ch_options)
+        driver.get('https://academic.oup.com/ser' + link)
         time.sleep(5)
-
-        soup  = BeautifulSoup(response.text, 'lxml')
-        for list in soup.find_all("a", attrs={"data-item-name": "click-article-title"}):
+        soup  = BeautifulSoup(driver.page_source, 'lxml')
+        driver.close()
+        for list in soup.find_all("a", attrs={"class": "at-articleLink"}):
             ahref = list['href']
             bs(ahref, values)
-        
         write_excel_xls_append("journal.xls",values)
 
-spider()
-
-
+ocr()
+bs("/ser/article/19/1/1/6307095", [])
