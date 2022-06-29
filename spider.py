@@ -1,3 +1,5 @@
+#!usr/bin/env python3
+
 from os import name
 import base64
 import requests
